@@ -1,9 +1,10 @@
-library(plyr) #need to load this first....
+#library(plyr) #need to load this first....
 library(tidyverse)
 library(readxl)
 library(lubridate)
 library(survival) #clogit
-library(flextable)
+#library(flextable)
+library(ggpubr)
 
 
 setwd("/home/robin/Documents/current_writing/Portugual_mening_case_control")
@@ -102,7 +103,8 @@ data<-data[is.na(data$excluded),]
 data<-(data[!data$case_id %in% excludeds[excludeds$case,]$case_id,]) #controls for excluded cases but careful as can remove innocent controls too
 data<-(data[!data$cc_id %in% excludeds[!excludeds$case,]$cc_id,]) #controls for excluded cases but careful as can remove innocent controls too
 nrow(subset(data, case))
-table( ddply(data, .(case_id), summarise, no_controls=max(control_id, na.rm = TRUE))$no_controls)
+
+#table( ddply(data, .(case_id), summarise, no_controls=max(control_id, na.rm = TRUE))$no_controls)
 
 #remove excluded controls 2803.02 as incomplete at the moment
 #data<-data[!data$cc_id=="2803.02",]
@@ -231,75 +233,45 @@ check_if_vaccinated<- function(dob, doa, hadvaccine, dose1, dose2, dose3, dose4)
 return (FALSE)
 }
 
-check_if_vaccinated_days<- function(dob, doa, hadvaccine, dose1, dose2, dose3, dose4){
-  ageindays<-(ymd(dob) %--% ymd(doa))/days(1)
-  
-  agedose1<-(ymd(dob) %--% ymd(dose1))/days(1)
-  agedose2<-(ymd(dob) %--% ymd(dose2))/days(1)
-  agedose3<-(ymd(dob) %--% ymd(dose3))/days(1)
-  agedose4<-(ymd(dob) %--% ymd(dose4))/days(1)
-  
-  dose_ages<-c(agedose1,agedose2,agedose3,agedose4)
-  dose_ages<-dose_ages[dose_ages<=(ageindays-14)] #removes any doses given 14 days before age at attendance.
-  dose_ages<-na.omit(dose_ages)
-  
-  if (!hadvaccine) {return(FALSE)}
-  
-  if (ageindays<(4*30 + 14)){return (FALSE)} #too young to have had all the doses and them have worked
-  
-  if (ageindays>=(4*30 + 14) & ageindays<=(15*30)){
-    if( length(dose_ages) >= 2 ) {return (TRUE)}
-    else return (FALSE)
-  }
-  
-  if (ageindays>=(16*30)){
-    if  (length(subset(dose_ages,dose_ages < (12*30) ) >= 2 ) & (length(subset(dose_ages,dose_ages >= (12*30)) >= 1 )) ){return (TRUE)}
-    if                                                          (length(subset(dose_ages,dose_ages >= (12*30)) >= 2 )  ){return (TRUE)}
-    else return (FALSE)
-  }
-  
-  return (FALSE)
-}
-
 #check_if_vaccinated('2006/07/21','2016/01/25',TRUE,'2016/02/08','2016/04/27',NA,NA)
 
-temp<-data %>% filter(cc_id=="0109") %>% select(dob,doa,menBvac,menBvac_date1,menBvac_date2,menBvac_date3,menBvac_date4) %>% ungroup()
-check_if_vaccinated(temp$dob, temp$doa, temp$menBvac, temp$menBvac_date1, temp$menBvac_date2, temp$menBvac_date3, temp$menBvac_date4)
+#temp<-data %>% filter(cc_id=="0109") %>% select(dob,doa,menBvac,menBvac_date1,menBvac_date2,menBvac_date3,menBvac_date4) %>% ungroup()
+#check_if_vaccinated(temp$dob, temp$doa, temp$menBvac, temp$menBvac_date1, temp$menBvac_date2, temp$menBvac_date3, temp$menBvac_date4)
 
-temp<-data %>% filter(cc_id=="1207,01") %>% select(dob,doa,menBvac,menBvac_date1,menBvac_date2,menBvac_date3,menBvac_date4) %>% ungroup()
-check_if_vaccinated(temp$dob, temp$doa, temp$menBvac, temp$menBvac_date1, temp$menBvac_date2, temp$menBvac_date3, temp$menBvac_date4)
+#temp<-data %>% filter(cc_id=="1207,01") %>% select(dob,doa,menBvac,menBvac_date1,menBvac_date2,menBvac_date3,menBvac_date4) %>% ungroup()
+#check_if_vaccinated(temp$dob, temp$doa, temp$menBvac, temp$menBvac_date1, temp$menBvac_date2, temp$menBvac_date3, temp$menBvac_date4)
 
 
 # Test vaccination check routine ----
 #     - aged 4 to 15 mo with 2 or more doses with the last dose >=14 d before presentation 
 #     - aged >=16 m with 2 or 3 doses before 1 y and one dose after 1 y of age ( booster dose at least 14 days before presentation)
 #     - >=2 doses after the first birthday (with the second dose at least 14 days before presentation)."
-testdate<-dmy("01/01/2017")
+#testdate<-dmy("01/01/2017")
 #under 4m
-check_if_vaccinated_days(testdate,testdate+months(3),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
+#check_if_vaccinated_days(testdate,testdate+months(3),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
 
 #4m
-check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
-check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(2), testdate+months(3),NA,NA)
-check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(3)+days(14),NA,NA)
-check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(3)+days(16),NA,NA)
-check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(4),NA,NA)
-check_if_vaccinated(testdate,testdate+months(15),  TRUE, testdate+months(3), testdate+months(4),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
+#check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(2), testdate+months(3),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(3)+days(14),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(3)+days(16),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(4),  TRUE, testdate+months(3), testdate+months(4),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(15),  TRUE, testdate+months(3), testdate+months(4),NA,NA)
 
 #>12m
-check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
-check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(12),NA)
-check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(13),NA)
+#check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(3),testdate+months(4))
+#check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(12),NA)
+#check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(1), testdate+months(2),testdate+months(13),NA)
 
-check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(12), testdate+months(13),NA,NA)
-check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(15), testdate+months(16),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(12), testdate+months(13),NA,NA)
+#check_if_vaccinated(testdate,testdate+months(16),  TRUE, testdate+months(15), testdate+months(16),NA,NA)
 
 
 pretty_output<- function(regression_results){
   temp<-as.matrix(summary(regression_results)$conf.int)
-  estimate<-round(1-temp[1],3)*100
-  upper<-round(1-temp[3],3)*100
-  lower<-round(1-temp[4],3)*100
+  estimate<-round(temp[1],3)
+  lower<-round(temp[3],3)
+  upper<-round(temp[4],3)
 
   if(estimate>1000 & !is.na(estimate))        {estimate<-" HI"}
   else if(estimate < -1000 & !is.na(estimate)){estimate<-" LO"}
@@ -310,7 +282,7 @@ pretty_output<- function(regression_results){
   if(lower>1000 & !is.na(lower))        {lower<-">999"}
   else if(lower< -1000 & !is.na(lower)) {lower<-"LO "}
   
-  output<-paste(estimate,"% (",lower,"-",upper,")",sep="")
+  output<-paste("OR :",estimate," (",lower,"-",upper,")",sep="")
   return(output)
 }
 
@@ -320,7 +292,8 @@ table(data$menBvac)
 ##### Determine who is vaccinated #####
 
 #calculate who has had complete vaccine schedule based on their age at attendance
-data<-data %>% group_by(id) %>% dplyr::mutate(menBvaccinated=check_if_vaccinated(dob, doa_virtual, menBvac, menBvac_date1 , menBvac_date2, menBvac_date3, menBvac_date4 ))
+#data<-data %>% group_by(id) %>% dplyr::mutate(menBvaccinated=check_if_vaccinated(dob, doa_virtual, menBvac, menBvac_date1 , menBvac_date2, menBvac_date3, menBvac_date4 ))
+data<-data %>% group_by(id) %>% mutate(menBvaccinated=check_if_vaccinated(dob, doa_virtual, menBvac, menBvac_date1 , menBvac_date2, menBvac_date3, menBvac_date4 ))
 
 table(subset(data,ageinmonths<4)$case,                  subset(data,ageinmonths<4)$menBvaccinated)
 table(subset(data,ageinmonths>=4 & ageinmonths<16)$case, subset(data,ageinmonths>4 & ageinmonths<16)$menBvaccinated)
@@ -330,13 +303,23 @@ subset(data,ageinmonths>=16 & case & menBvaccinated)$cc_id
 
 
 #calculate number of doses prior to attendance
-data<-data %>% group_by(id) %>% dplyr::mutate(no_prior_doses=
+data<-data %>% group_by(id) %>% mutate(no_prior_doses=
                                          sum((c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4))
                                               < (ymd(doa_virtual)-days(14) )), na.rm = TRUE)
                                        )
 
+#Who had at least one dose of vaccine at point of illness
+data$prior_doses<-(data$no_prior_doses>0)
+table(data$prior_doses)
+
+data$doses_1<-(data$no_prior_doses==1)
+table(data$doses_1)
+data$doses_2<-(data$no_prior_doses>=2)
+table(data$doses_2)
+
+
 #calculate number of doses prior to 12m of age
-data<-data %>% group_by(id) %>% dplyr::mutate(no_doses_12m=
+data<-data %>% group_by(id) %>% mutate(no_doses_12m=
                                                 sum( 
                                                   #(c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4))   <= (ymd(dob)+years(1))) & 
                                                   #  (c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4)) <= (ymd(doa_virtual)-days(14))),
@@ -345,13 +328,14 @@ data<-data %>% group_by(id) %>% dplyr::mutate(no_doses_12m=
                                                 )
 )
 
+
 table(data$no_doses_12m)
 table(data[data$case,]$no_doses_12m)
 table(data[!data$case,]$no_doses_12m)
 
 
 #calculate number of doses prior to 16m of age
-data<-data %>% group_by(id) %>% dplyr::mutate(no_doses_16m=
+data<-data %>% group_by(id) %>% mutate(no_doses_16m=
                                                 sum( 
                                                   (c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4)) <= (ymd(dob)+months(16))) & 
                                                     (c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4)) <= (ymd(doa_virtual)-days(14))),
@@ -363,7 +347,7 @@ table(data[data$case,]$no_doses_16m)
 table(data[!data$case,]$no_doses_16m)
 
 #calculate number of doses after 12m of age
-data<-data %>% group_by(id) %>% dplyr::mutate(no_doses_over_12m=
+data<-data %>% group_by(id) %>% mutate(no_doses_over_12m=
                                                 sum( 
                                                   #(c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4)) >= (ymd(dob)+years(1))) & 
                                                   #(c(ymd(menBvac_date1), ymd(menBvac_date2), ymd(menBvac_date3), ymd(menBvac_date4)) <= (ymd(doa_virtual)-days(14))),
@@ -381,14 +365,7 @@ table(data[!data$case,]$no_doses_over_12m)
   (c(ymd("2016/01/01"), ymd("2016/02/01"), ymd("2016/03/01"), ymd("2017/01/01")) >= ymd("2016/03/01"))
 
 
-#had at least one dose of vaccine at point of illness
-data$prior_doses<-(data$no_prior_doses>0)
-table(data$prior_doses)
 
-data$doses_1<-(data$no_prior_doses==1)
-table(data$doses_1)
-data$doses_2<-(data$no_prior_doses>=2)
-table(data$doses_2)
 
 
 #partially vaccinated cases removed.
@@ -469,34 +446,23 @@ rsq <- function(data, indices) {
   d <- data[indices,] # allows boot to select sample
   or <- (nrow(subset(d,case&vac))/nrow(subset(d,case&!vac)))/
     (nrow(subset(d,!case&vac))/nrow(subset(d,!case&!vac)))
-  return(1-or)
+  return(or)
 } 
 # bootstrapping with 1000 replications 
 results <- boot(data=crudeData, statistic=rsq, R=10000)
 # view results
 results 
 boot.ci(results, type="bca")
-
+# gives OR 0.26 (0.07-0.71)
 
 ###### Regression analysis ######
 
 #Primary analysis - complete vaccine schedule to age against B disease.
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134) ))
+#pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134) ))
 
 pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134), method="efron",robust=TRUE))
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134), method="breslow",robust=TRUE))
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134), method="approximate",robust=TRUE))
-
-rsq <- function(data, indices) {
-  d <- data[indices,] # allows boot to select sample
-  or <-  exp(clogit(case ~ menBvaccinated + strata(case_id), d )$coef)
-  return(1-or)
-} 
-# bootstrapping with 1000 replications 
-results <- boot(data=subset(data,case_group=="B" & case_ageindays>=134), statistic=rsq, R=1000)
-# view results
-results 
-boot.ci(results, type="all")
+#pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134), method="breslow",robust=TRUE))
+#pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134), method="approximate",robust=TRUE))
 
 #library(foreign)
 #write.dta( subset(data,case_group=="B" & case_ageindays>=134), "primary.dta")
@@ -509,14 +475,23 @@ boot.ci(results, type="all")
 
 #>=1_doses against B disease.
 pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134) ))
+table(subset(data,case_group=="B" & case_ageindays>=134 & case)$prior_doses)
+table(subset(data,case_group=="B" & case_ageindays>=134 & !case)$prior_doses)
 #secondary analysis - partially vaccinated cases and controls removed
 pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="B" & !partial_vaccinated) ))
 
 
 #complete vaccine schedule to age against any disease.
 pretty_output(clogit(case ~ menBvaccinated + strata(case_id), data) )
+table(subset(data, case)$menBvaccinated)
+table(subset(data, !case)$menBvaccinated)
+
 #>=1_doses against any disease.
 pretty_output(clogit(case ~ prior_doses + strata(case_id), data) )
+table(subset(data, case)$prior_doses)
+table(subset(data, !case)$prior_doses)
+
+
 #secondary analysis - partially vaccinated cases and controls removed
 pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,!partial_vaccinated) ))
 
@@ -539,86 +514,68 @@ data[data$case & (data$menBvaccinated | data$prior_doses),]$case_id
 
 ###### Socioeconomic analysis ######
 
-histDatacc<-data.frame(
-  case<-c(rep("Case",nrow(subset(data,case))), rep("Control",nrow(subset(data,!case)))),
-  SES<-c(subset(data,case)$perCapita,subset(data,!case)$perCapita)
-)
-
-#histData<-data.frame(
-#  case<-c(rep(TRUE,nrow(subset(data,case))), rep(FALSE,nrow(subset(data,!case)))),
-#  SES<-c(subset(data,case)$perCapita,subset(data,!case)$perCapita)
-#)
-names(histDatacc)<-c("case","perCapita")
-
-histDataMeancc <- ddply(histDatacc, .(case), summarise, meanLine=mean(perCapita))
-
-ggplot(histDatacc, aes(x = perCapita, group = case, fill = case)) +
-  geom_histogram(colour = "gray", binwidth = 25) +
-  #geom_density(alpha=.2, fill="#FF6666")+  # Overlay with transparent density plot
-  facet_wrap(~ case) +
-  theme_bw()
-
-plotSEScasecontrol<-
-ggplot(histDatacc, aes(x = perCapita, fill=case))+
-  geom_density(alpha=.3)+
-  xlab("Purchasing Power Indicator per Capita")+
-  ylab("Density")+
-  geom_vline(data=histDataMeancc, aes(xintercept=meanLine,  colour=case),linetype="dashed", size=1)+
-  theme_bw()+
-  theme(legend.title = element_blank(), legend.position=c(0.85, 0.85), 
-        legend.text = element_text(size = 10, margin = margin(l = 10), hjust = 0),
-        legend.key = element_rect(size = 5),
-        legend.key.size = unit(1.5, 'lines'))
-
-t.test(subset(data,case)$perCapita,subset(data,!case)$perCapita)
-wilcox.test(subset(data,case)$perCapita,subset(data,!case)$perCapita)
+#case vs control
+summary(subset(data,case)$perCapita)
+summary(subset(data,!case)$perCapita)
+#t.test(subset(data,case)$perCapita,subset(data,!case)$perCapita)
+wilcox.test(subset(data,case)$perCapita,subset(data,!case)$perCapita,conf.int = TRUE)
 
 #vaccine vs no vaccine
 summary(subset(data,menBvac)$perCapita)
 summary(subset(data,!menBvac)$perCapita)
-welch.test(subset(data,menBvac)$perCapita,subset(data,!menBvac)$perCapita)
-wilcox.test(subset(data,menBvac)$perCapita,subset(data,!menBvac)$perCapita)
+wilcox.test(subset(data,menBvac)$perCapita,subset(data,!menBvac)$perCapita, conf.int = TRUE)
 
-histData_vu<-data.frame(
-  menBvaccined<-c(rep("vaccinated",nrow(subset(data,menBvac))), rep("unvaccinated",nrow(subset(data,!menBvac)))),
-  SES<-c(subset(data,menBvac)$perCapita,subset(data,!menBvac)$perCapita)
-)
-names(histData_vu)<-c("menBvaccined","perCapita")
-histDataMean_vu <- ddply(histData_vu, .(menBvaccined), summarise, meanLine=mean(perCapita))
-
-ggplot(histData_vu, aes(x = perCapita, group = menBvaccined, fill = menBvaccined)) +
-  geom_histogram(colour = "gray", binwidth = 25) +
-  facet_wrap(~ menBvaccined) +
-  theme_bw()
-
-plotSESvaccine<-
-ggplot(histData_vu, aes(x = perCapita, fill=menBvaccined))+
+#case vs control
+plotSEScasecontrol<-
+ggplot(
+data %>% select(case,perCapita) %>%
+  group_by(case) %>%
+  mutate(meanLine = median(perCapita)) %>%
+  mutate(case = ifelse(case, "case", "control")), 
+aes(x = perCapita, colour=case))+
   geom_density(alpha=.3)+
   xlab("Purchasing Power Indicator per Capita")+
   ylab("Density")+
-  geom_vline(data=histDataMean_vu, aes(xintercept=meanLine,  colour=menBvaccined),linetype="dashed", size=1)+
+  geom_vline(aes(xintercept=meanLine,  colour=case), size=1)+
   theme_bw()+
-  scale_fill_brewer(palette="Set1")+
   theme(legend.title = element_blank(), legend.position=c(0.85, 0.85), 
         legend.text = element_text(size = 10, margin = margin(l = 10), hjust = 0),
         legend.key = element_rect(size = 5),
         legend.key.size = unit(1.5, 'lines'))
-  
 
-library("ggpubr")
+#vaccine vs no vaccine
+plotSESvaccine<-
+ggplot(
+  data %>% select(menBvac,perCapita) %>% 
+    group_by(menBvac) %>% 
+    mutate(meanLine = median(perCapita)) %>% 
+    mutate(menBvac = ifelse(menBvac, "vaccinated", "unvaccinated")), 
+  aes(x = perCapita, color=menBvac))+
+  geom_density(alpha=.3)+
+  xlab("Purchasing Power Indicator per Capita")+
+  ylab("Density")+
+  geom_vline(aes(xintercept=meanLine,  colour=menBvac), size=1)+
+  theme_bw()+
+  #scale_fill_brewer(palette="Set2")+
+  theme(legend.title = element_blank(), legend.position=c(0.85, 0.85), 
+        legend.text = element_text(size = 10, margin = margin(l = 10), hjust = 0),
+        legend.key = element_rect(size = 5),
+        legend.key.size = unit(1.5, 'lines'))
+
+
 ggarrange(plotSESvaccine, plotSEScasecontrol,
                     labels = c("A", "B"),
                     ncol = 1, nrow = 2)
+ggsave("/tmp/ptbest_fig1.eps", plot = last_plot(), dpi=300)
 
-ggsave("/tmp/ptbest300.png", plot = last_plot(), dpi=300)
-ggsave("/tmp/ptbest600.png", plot = last_plot(), dpi=600)
+#ggsave("/tmp/ptbest300.png", plot = last_plot(), dpi=300)
+#ggsave("/tmp/ptbest600.png", plot = last_plot(), dpi=600)
 
 data$SESgrp<-as.factor(as.numeric(cut(data$perCapita,2,include.lowest=T)))
 
 regression_results<-clogit(case ~ menBvaccinated + menBvaccinated:SESgrp + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134) )
 summary(regression_results)
 summary(regression_results)$conf.int
-
 
 regression_results<-clogit(case ~ menBvaccinated + menBvaccinated:perCapita + strata(case_id), subset(data,case_group=="B" & case_ageindays>=134) )
 summary(regression_results)
@@ -723,75 +680,27 @@ summary(data[data$case & !data$prior_doses & data$case_ageindays>=74,]$ageinmont
 summary(data[data$case & !data$prior_doses & data$case_ageindays>=74,]$hospital_duration)
 table(data[data$case & !data$prior_doses & data$case_ageindays>=74,]$outcome)
 
+
+##################
+#outcomes of vaccinated cases
+nrow(subset(data,case & prior_doses ))
+table( subset(data,case & prior_doses )$outcome)
+
+#outcomes of unvaccinated cases
+nrow(subset(data,case & !prior_doses ))
+table( subset(data,case & !prior_doses )$outcome)
+
+
 prop.test(c(11, 51), c(11, 73))
 prop.test(c(0, 23), c(11, 87))
 
 fisher.test(matrix(c(0, 23, 11, 64), nrow = 2))
+
 table( cut(
 data[data$case & data$nm_group=="B" & data$menBvaccinated & data$case_ageindays>=74,]$ageinmonths
 , breaks=seq(0,120,12)))
 
 
-###### subgroups for Shamez ######
-
-#all >74 any doses against anything
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,case_group=="B" & case_ageindays>=74), method="efron",robust=TRUE))
-nrow(data[data$case  & data$case_ageindays>=74,])
-nrow(data[data$case  & data$prior_doses & data$case_ageindays>=74,])
-nrow(data[!data$case & data$case_ageindays>=74,])
-nrow(data[!data$case & data$prior_doses & data$case_ageindays>=74,])
-
-
-#Y
-#fully vaccinated for age
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="Y" & case_ageindays>=134), method="efron",robust=TRUE))
-#at least one dose
-pretty_output(clogit(case ~ prior_doses    + strata(case_id), subset(data,case_group=="Y" & case_ageindays>=134), method="efron",robust=TRUE))
-#just one dose
-pretty_output(clogit(case ~ doses_1        + strata(case_id), subset(data,case_group=="Y" & case_ageindays>=134), method="efron",robust=TRUE))
-#two doses
-pretty_output(clogit(case ~ doses_2        + strata(case_id), subset(data,case_group=="Y" & case_ageindays>=134), method="efron",robust=TRUE))
-
-#W
-#fully vaccinated for age
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,case_group=="W" & case_ageindays>=134), method="efron",robust=TRUE))
-#at least one dose
-pretty_output(clogit(case ~ prior_doses    + strata(case_id), subset(data,case_group=="W" & case_ageindays>=134), method="efron",robust=TRUE))
-#just one dose
-pretty_output(clogit(case ~ doses_1    + strata(case_id), subset(data,case_group=="W" & case_ageindays>=134), method="efron",robust=TRUE))
-#two doses
-pretty_output(clogit(case ~ doses_2    + strata(case_id), subset(data,case_group=="W" & case_ageindays>=134), method="efron",robust=TRUE))
-
-#W&Y
-#fully vaccinated for age
-pretty_output(clogit(case ~ menBvaccinated + strata(case_id), subset(data,(case_group=="Y"|case_group=="W") & case_ageindays>=134), method="efron",robust=TRUE))
-#at least one dose
-pretty_output(clogit(case ~ prior_doses    + strata(case_id), subset(data,(case_group=="Y"|case_group=="W") & case_ageindays>=134), method="efron",robust=TRUE))
-#just one dose
-pretty_output(clogit(case ~ doses_1    + strata(case_id), subset(data,(case_group=="Y"|case_group=="W") & case_ageindays>=134), method="efron",robust=TRUE))
-#two doses
-pretty_output(clogit(case ~ doses_2    + strata(case_id), subset(data,(case_group=="Y"|case_group=="W") & case_ageindays>=134), method="efron",robust=TRUE))
-
-
-#against all cause by age
-#<1
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,ageCat=="<1" & case_ageindays>=74), method="efron",robust=TRUE))
-#1-4
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,ageCat=="1-4" & case_ageindays>=74), method="efron",robust=TRUE))
-#5-9
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,ageCat=="5-9" & case_ageindays>=74), method="efron",robust=TRUE))
-#10-18
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,ageCat=="10-18" & case_ageindays>=74), method="efron",robust=TRUE))
-
-#against B by age
-#<1
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,data$case_group=="B" & ageCat=="<1" & case_ageindays>=74), method="efron",robust=TRUE))
-#1-4
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,data$case_group=="B" & ageCat=="1-4" & case_ageindays>=74), method="efron",robust=TRUE))
-#5-9
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,data$case_group=="B" & ageCat=="5-9" & case_ageindays>=74), method="efron",robust=TRUE))
-#10-18
-pretty_output(clogit(case ~ prior_doses + strata(case_id), subset(data,data$case_group=="B" & ageCat=="10-18" & case_ageindays>=74), method="efron",robust=TRUE))
 
 
 
@@ -929,11 +838,54 @@ table( subset(data,control)$prior_doses )
 
 #how many matches.
 temp <- data %>% group_by(case_id) %>% mutate( test = max(control_id, na.rm = TRUE))
+
+
+prop.test(c(0,23),c(11,86))
   
 #temp<-subset(data,control & case_group=="B")
 temp<-subset(data,control)
 table(temp$control_id)
 table(temp$control_id, useNA=c("always"))
+
+#date last case discharged
+max(data[data$case,]$doa+days(data[data$case,]$hospital_duration))
+
+
+
+
+summary(subset(data,case & ageindays >73 )$ageinmonths)
+summary(subset(data,case & ageindays >73 & nm_group=="B")$ageinmonths)
+summary(subset(data,case & ageindays>=134)$ageinmonths)
+summary(subset(data,case & ageindays>=134 & nm_group=="B")$ageinmonths)
+
+summary(subset(data,case & ageindays >73 )$hospital_duration)
+summary(subset(data,case & ageindays >73 & nm_group=="B")$hospital_duration)
+summary(subset(data,case & ageindays>=134)$hospital_duration)
+summary(subset(data,case & ageindays>=134 & nm_group=="B")$hospital_duration)
+
+nrow(subset(data,case & ageindays >73 ))
+nrow(subset(data,case & ageindays >73 & menBvaccinated))
+nrow(subset(data,case & ageindays >73 & prior_doses))
+summary(subset(data,case & ageindays >73 & prior_doses)$ageinmonths)
+summary(subset(data,case & ageindays >73 & prior_doses)$hospital_duration)
+table(subset(data,case & ageindays >73 & prior_doses)$outcome)
+
+nrow(subset(data,case & ageindays >73 & !prior_doses))
+summary(subset(data,case & ageindays >73 & !prior_doses)$ageinmonths)
+summary(subset(data,case & ageindays >73 & !prior_doses)$hospital_duration)
+table(subset(data,case & ageindays >73 & !prior_doses)$outcome)
+
+
+#Age breakdown of vaccination by age
+table(subset(data,case & ageinmonths < (5*12))$menBvaccinated)
+table(subset(data,!case & ageinmonths < (5*12))$menBvaccinated)
+
+table(subset(data,case & ageinmonths >= (5*12)  & ageinmonths < (10*12))$menBvaccinated)
+table(subset(data,!case & ageinmonths >= (5*12) & ageinmonths < (10*12) )$menBvaccinated)
+
+table(subset(data,case & ageinmonths >= (10*12))$menBvaccinated)
+table(subset(data,!case & ageinmonths >= (10*12))$menBvaccinated)
+
 
 
 
@@ -1018,7 +970,7 @@ results_table_column<- function(dataset){
 return(
   c(
     nrow(dataset),
-    paste(sprintf("%.1f",median(dataset$ageinmonths)),"\n(", sprintf("%.1f",min(dataset$ageinmonths)),'-', sprintf("%.1f",max(dataset$ageinmonths)),")"),
+    paste(sprintf("%.1f",median(dataset$ageinmonths)),"\n(", sprintf("%.1f",summary(data$ageinmonths)[2]),'-', sprintf("%.1f",summary(data$ageinmonths)[4]),")"),
     nrow(subset(dataset, gender)),
     "",
     nrow(subset(dataset, diagnosis==1)),
@@ -1027,7 +979,7 @@ return(
     nrow(subset(dataset, diagnosis==4)),
     nrow(subset(dataset, diagnosis==5)),
     nrow(subset(dataset, !dataset$diagnosis %in% c(1,2,3,4,5))),
-    paste(median(dataset$hospital_duration),"\n(", min(dataset$hospital_duration),'-',max(dataset$hospital_duration),")"),
+    paste(median(dataset$hospital_duration),"\n(", summary(data$ageinmonths)[2],'-',summary(data$ageinmonths)[4],")"),
     "",
     #Outcome (Death=1; Survival with no sequelae=2; Survival with sequelae=3; Amputation=4; ENT=5; Development=6; Others=7)
     nrow(subset(dataset, outcome==1)),
@@ -1143,53 +1095,13 @@ flextable(table2_data)
 ft_table2 <- fontsize(ft_table2, size = 6, part = "all")
 ft_table2 <- autofit(ft_table2)
 
-# Update word files -------------------------------------------------------
-infile<-"PT-BEST paper v1.3_template_results.docx"
-outfile<-"PT-BEST paper v1.3_results.docx"
+##### Control diagnoses ######
+table(tolower(subset(data,!case)$diagnosis))
 
-renderInlineCode(infile,outfile)
-
-doc <- read_docx(outfile)
-
-body_replace_flextable_at_bkm(doc, "t_table1", ft_table1, align = "center", split = FALSE)
-body_replace_flextable_at_bkm(doc, "t_table2", ft_table2, align = "center", split = FALSE)
-print(doc, target = outfile)
+write.csv( data %>% filter(!case) %>% select(cc_id,diagnosis), "diagnosis_of_controls.csv")
 
 
 
-# Shamez table ------------------------------------------------------------
-
-# - aged 4 to 15 mo with 2 or more doses with the last dose >=14 d before presentation 
-# - aged >=16 m with 2 or 3 doses before 1 y and one dose after 1 y of age ( booster dose at least 14 days before presentation)
-#  >=2 doses after the first birthday (with the second dose at least 14 days before presentation)."  
-
-#2+0 (with IMD before their booster, or 16 months, whichever comes first)
-table(data[data$case,]$sched_2_0)
-pretty_output(clogit(case ~ sched_2_0 + strata(case_id), data , method="efron",robust=TRUE))
-
-#3+ 0 (with IMD before their booster, or 16 months, whichever comes first)
-table(data[data$case,]$sched_3_0)
-
-#2/3+0 (with IMD before their booster, or 16 months, whichever comes first
-table(data[data$case,]$sched_23_0)
-
-#2/3+1 schedule (i.e. infant + booster from 12 months)
-table(data[data$case,]$sched_23_1)
-
-#2 doses after 1st birthday with disease before 5th birthday
-table(data[data$case,]$sched_x_2_u5)
-
-#2 doses with disease after 5th birthday 
-table(data[data$case,]$sched_x_2_o5)
-
-#All above cases with at least 2 doses
-table(data[data$case,]$sched_x_2)
-
-#Cases with only 1 dose of 4CMenB after 1 year of age
-table(data[data$case,]$sched_0_1)
-
-#Cases meeting full vaccination criteria
-table(data[data$case,]$menBvaccinated)
 
 
 results_table3_line<- function(case, schedule){
@@ -1302,3 +1214,87 @@ sched_0_2$age_at_dose1<-(ymd(sched_0_2$dob) %--% ymd(sched_0_2$menBvac_date1))/m
 table(sched_0_2$age_at_dose1)
 sched_0_2$age_at_dose2<-(ymd(sched_0_2$dob) %--% ymd(sched_0_2$menBvac_date2))/months(1)
 table(sched_0_2$age_at_dose2)
+
+
+
+####### generate table for comment 90 ######
+
+#Cases fully immunised for age* / Controls fully immunised for age* / Crude OR  (95% CI)  / Matched** OR (95% CI) 
+
+results_comment90<- function(sdata){
+
+  Ca_Vp<-nrow(subset(sdata, case & menBvaccinated))
+  Ca_Vn<-nrow(subset(sdata, case & !menBvaccinated))
+  Ca_Vb<-nrow(subset(sdata, case))
+  
+  Co_Vp<-nrow(subset(sdata, !case & menBvaccinated))
+  Co_Vn<-nrow(subset(sdata, !case & !menBvaccinated))
+  Co_Vb<-nrow(subset(sdata, !case ))
+  
+  crudeOR<-(Ca_Vp/Ca_Vn)/(Co_Vp/Co_Vn)
+  crudeORse<-sqrt(((1/Ca_Vp)+(1/Ca_Vn)+(1/Co_Vp)+(1/Co_Vn)))
+  crudeOR_l<-exp( log(crudeOR)-(1.96*crudeORse))
+  crudeOR_h<-exp( log(crudeOR)+(1.96*crudeORse))
+  
+  return(
+    c(
+      paste("Cases:",    Ca_Vp,"/", Ca_Vb," (",round((Ca_Vp/Ca_Vb)*100),"%)",
+            "Controls:", Co_Vp,"/", Co_Vb," (",round((Co_Vp/Co_Vb)*100),"%)"),
+      paste("Crude OR:",sprintf("%.2f",crudeOR),"(", sprintf("%.2f",crudeOR_l) , "-",  sprintf("%.2f",crudeOR_h),")"), 
+      paste("Matched:", pretty_output(clogit(case ~ menBvaccinated + strata(case_id), sdata, method="efron",robust=TRUE)))
+    )
+      )
+}
+
+#"Group B eligible cases >134 days old (n=69)"
+results_comment90(subset(data, case_group=="B" & case_ageindays>=134))
+
+#"All eligible cases >134 days old (n=85)"
+results_comment90(subset(data, case_ageindays>=134))
+
+#"Group B eligible cases >74 days old (n=82)"
+results_comment90(subset(data, case_group=="B" & case_ageindays>=74))
+
+#"All eligible cases >74 days old (n=98)"
+results_comment90(subset(data, case_ageindays>=74))
+
+
+#
+#now same but for if had at least one dose of vaccine
+#
+
+results_comment90_any<- function(sdata){
+  
+  Ca_Vp<-nrow(subset(sdata, case & prior_doses))
+  Ca_Vn<-nrow(subset(sdata, case & !prior_doses))
+  Ca_Vb<-nrow(subset(sdata, case))
+  
+  Co_Vp<-nrow(subset(sdata, !case & prior_doses))
+  Co_Vn<-nrow(subset(sdata, !case & !prior_doses))
+  Co_Vb<-nrow(subset(sdata, !case ))
+  
+  crudeOR<-(Ca_Vp/Ca_Vn)/(Co_Vp/Co_Vn)
+  crudeORse<-sqrt(((1/Ca_Vp)+(1/Ca_Vn)+(1/Co_Vp)+(1/Co_Vn)))
+  crudeOR_l<-exp( log(crudeOR)-(1.96*crudeORse))
+  crudeOR_h<-exp( log(crudeOR)+(1.96*crudeORse))
+  
+  return(
+    c(
+      paste("Cases:",    Ca_Vp,"/", Ca_Vb," (",round((Ca_Vp/Ca_Vb)*100),"%)",
+            "Controls:", Co_Vp,"/", Co_Vb," (",round((Co_Vp/Co_Vb)*100),"%)"),
+      paste("Crude OR:",sprintf("%.2f",crudeOR),"(", sprintf("%.2f",crudeOR_l) , "-",  sprintf("%.2f",crudeOR_h),")"), 
+      paste("Matched:", pretty_output(clogit(case ~ prior_doses + strata(case_id), sdata, method="efron",robust=TRUE)))
+    )
+  )
+}
+
+#"Group B eligible cases >74 days old (n=82)"
+results_comment90_any(subset(data, case_group=="B" & case_ageindays>=74))
+
+#"All eligible cases >74 days old (n=98)"
+results_comment90_any(subset(data,case_ageindays>=74))
+
+
+
+
+
